@@ -1,144 +1,107 @@
-// we initially plan to use CSR only, no SSR, for the entire app
 "use client";
+
 import { useDbData, useDbUpdate } from "./utilities/firebase";
 import { useEffect, useState } from "react";
+import Image from "next/image";
+
 
 export default function Home() {
   const [pet, error] = useDbData("/kempigotchi");
   const [update, result] = useDbUpdate("/kempigotchi");
-  const [currentTime, setCurrentTime] = useState(Date.now()); // To trigger re-renders
+  const [hydrated, setHydrated] = useState(false); // To prevent hydration mismatch
 
-  // Kevin: This manually updates the browser every second, I have not found a way to let
-  // the broswer automatically updates with firebase yet. But this should do the work.
+  // Ensure hydration by using useEffect
   useEffect(() => {
-    // Set an interval to update the current time every second
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000);
-
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    setHydrated(true);
   }, []);
 
-  // This updates the health, happiness, and energy with time
+  // Automatic deduction of stats
   useEffect(() => {
     if (pet && pet.lastUpdated) {
-      const now = Date.now();
-      const lastUpdated = new Date(pet.lastUpdated).getTime();
-      const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
+      const interval = setInterval(() => {
+        const now = Date.now();
+        const lastUpdated = new Date(pet.lastUpdated).getTime();
+        const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
 
-      // Assuming decrease rate of 1 per 5 seconds for each attribute
-      const decreaseRate = 5; // seconds
-      const decreaseAmount = Math.floor(elapsedSeconds / decreaseRate);
+        const decreaseRate = 5; // Decrease every 5 seconds
+        const decreaseAmount = Math.floor(elapsedSeconds / decreaseRate);
 
-      if (decreaseAmount > 0) {
-        // Calculate new values with decrease
-        const newHealth = Math.max(0, pet.health - decreaseAmount);
-        const newEnergy = Math.max(0, pet.energy - decreaseAmount);
-        const newHappiness = Math.max(0, pet.happiness - decreaseAmount);
+        if (decreaseAmount > 0) {
+          const newHealth = Math.max(0, pet.health - decreaseAmount);
+          const newEnergy = Math.max(0, pet.energy - decreaseAmount);
+          const newHappiness = Math.max(0, pet.happiness - decreaseAmount);
 
-        // Update pet data in firebase
-        update({
-          health: newHealth,
-          energy: newEnergy,
-          happiness: newHappiness,
-          lastUpdated: now,
-        });
-      }
+          update({
+            health: newHealth,
+            energy: newEnergy,
+            happiness: newHappiness,
+            lastUpdated: now,
+          });
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
     }
-  }, [pet, currentTime, update]);
+  }, [pet, update]);
 
-  if (error) return <h1>Error loading data: {error.toString()}</h1>;
-  if (pet === undefined) return <h1>Loading data...</h1>;
+  if (!hydrated) return null; // Prevent rendering until hydration
+  if (error) return <h1 className="text-red-500">Error: {error.message}</h1>;
+  if (pet === undefined) return <h1>Loading...</h1>;
   if (!pet) return <h1>No pet found.</h1>;
 
   const MAX_STAT_VALUE = 100;
 
-  const handleFeed = () => {
-    const newEnergy = Math.min(MAX_STAT_VALUE, pet.energy + 10);
-    update({energy: newEnergy});
-  }
-  const handlePlay = () => {
-    const newHappiness = Math.min(MAX_STAT_VALUE, pet.happiness + 10);
-    update({happiness: newHappiness});
-
-  }
-  const handleClean = () => {
-    const newHealth = Math.min(MAX_STAT_VALUE, pet.health + 10);
-    update({health: newHealth});
-
-  }
-
+  const handleFeed = () => update({ energy: Math.min(MAX_STAT_VALUE, pet.energy + 10) });
+  const handlePlay = () => update({ happiness: Math.min(MAX_STAT_VALUE, pet.happiness + 10) });
+  const handleClean = () => update({ health: Math.min(MAX_STAT_VALUE, pet.health + 10) });
 
   return (
-    <div>
-      <h1>Hi, I&apos;m Kempi, your new Kempigotchi pet.</h1>
+    <div className="relative min-h-screen bg-gradient-to-b from-blue-200 to-purple-300 font-sans overflow-hidden flex flex-col">
+      {/* Title */}
+      <h1 className="w-full text-5xl font-bold text-center text-white drop-shadow-lg mt-6">
+        My Kempigotchi
+      </h1>
 
-      <p>Energy: {pet.energy}</p>
-      <p>Happiness: {pet.happiness}</p>
-      <p>Health: {pet.health}</p>
-      <p>Growth stage: {pet.growth}</p>
-
-      <br />
-      
-      {/* Interaction Buttons */}
-      <div className="flex flex-row justify-around items-center w-full max-w-md mt-6">
-        <button
-          className="bg-purple-300 hover:bg-purple-400 text-black font-semibold py-2 px-6 rounded-full shadow-md"
-          onClick={handleFeed}
-          aria-label="Feed the pet to increase energy"
-        >
-          Feed
-        </button>
-
-        <button
-          className="bg-purple-300 hover:bg-purple-400 text-black font-semibold py-2 px-6 rounded-full shadow-md"
-          onClick={handlePlay}
-          aria-label="Play with the pet to increase happiness"
-        >
-          Play with
-        </button>
-
-        <button
-          className="bg-purple-300 hover:bg-purple-400 text-black font-semibold py-2 px-6 rounded-full shadow-md"
-          onClick={handleClean}
-          aria-label="Clean the pet to increase health"
-        >
-          Clean
-        </button>
+      {/* Stats in Top-Left */}
+      <div className="absolute top-8 left-8 text-2xl font-semibold text-white space-y-4 drop-shadow-lg">
+        <p>Health: {pet.health}</p>
+        <p>Hunger: {pet.energy}</p>
+        <p>Happiness: {pet.happiness}</p>
       </div>
+      {/* Pet Image */}
+      <div className="flex flex-col items-center justify-center flex-grow">
+        <Image
+          src="/penguin.png"
+          alt="Pet"
+          width={384} // Equivalent to w-96
+          height={384} // Equivalent to h-96
+          className="rounded-full shadow-xl drop-shadow-lg"
+        />
 
-      <h1>Here are some examples on updating the database values:</h1>
 
-      <button className="bg-purple-300" onClick={() => update({ energy: 100 })}>
-        Set energy to 100
-      </button>
 
-      <button
-        className="bg-purple-500"
-        onClick={() => update({ energy: pet.energy - 5 })}
-      >
-        Decrease energy by 5
-      </button>
-
-      <button
-        className="bg-purple-100"
-        onClick={() =>
-          update({ growth: pet.growth === "baby" ? "adult" : "baby" })
-        }
-      >
-        Toggle growth stage between baby/adult
-      </button>
-      
-      {/* Button to initialize everything to 100, for testing purpose */}
-      <button
-        className="bg-green-300"
-        onClick={() => 
-          update({ lastUpdated: Date.now(), health: 100, energy: 100, happiness: 100 })
-        }
-      >
-        Initialize Pet Data
-      </button>
-
+        {/* Interaction Buttons */}
+        <div className="flex justify-center space-x-8 mt-8">
+          <button
+            onClick={handleFeed}
+            className="flex items-center justify-center w-32 h-32 text-2xl font-bold text-white bg-blue-500 rounded-full shadow-xl hover:bg-blue-600"
+          >
+            Feed
+          </button>
+          <button
+            onClick={handlePlay}
+            className="flex items-center justify-center w-32 h-32 text-2xl font-bold text-white bg-yellow-500 rounded-full shadow-xl hover:bg-yellow-600"
+          >
+            Play
+          </button>
+          <button
+            onClick={handleClean}
+            className="flex items-center justify-center w-32 h-32 text-2xl font-bold text-white bg-green-500 rounded-full shadow-xl hover:bg-green-600"
+          >
+            Clean
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
