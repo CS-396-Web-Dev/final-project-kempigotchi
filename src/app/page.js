@@ -4,16 +4,24 @@ import { useDbData, useDbUpdate } from "./utilities/firebase";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
-
 export default function Home() {
   const [pet, error] = useDbData("/kempigotchi");
   const [update, result] = useDbUpdate("/kempigotchi");
   const [hydrated, setHydrated] = useState(false); // To prevent hydration mismatch
+  const [editingTitle, setEditingTitle] = useState(false); // Track if title is being edited
+  const [title, setTitle] = useState("My Kempigotchi"); // Local state for the title
 
   // Ensure hydration by using useEffect
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  // Fetch the title from the database if available
+  useEffect(() => {
+    if (pet?.title) {
+      setTitle(pet.title);
+    }
+  }, [pet]);
 
   // Automatic deduction of stats
   useEffect(() => {
@@ -55,12 +63,48 @@ export default function Home() {
   const handlePlay = () => update({ happiness: Math.min(MAX_STAT_VALUE, pet.happiness + 10) });
   const handleClean = () => update({ health: Math.min(MAX_STAT_VALUE, pet.health + 10) });
 
+  const handleTitleClick = () => {
+    setEditingTitle(true);
+  };
+
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
+  };
+
+  const handleTitleSave = () => {
+    setEditingTitle(false);
+    update({ title }); // Save the title to Firebase
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleTitleSave();
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-blue-200 to-purple-300 font-sans overflow-hidden flex flex-col">
       {/* Title */}
-      <h1 className="w-full text-5xl font-bold text-center text-white drop-shadow-lg mt-6">
-        My Kempigotchi
-      </h1>
+      <div className="mt-6 w-full text-center">
+        {editingTitle ? (
+          <input
+            type="text"
+            value={title}
+            onChange={handleTitleChange}
+            onBlur={handleTitleSave}
+            onKeyDown={handleKeyDown}
+            className="text-5xl font-bold text-center text-white bg-transparent border-b-2 border-white focus:outline-none focus:border-blue-500"
+          />
+        ) : (
+          <h1
+            onClick={handleTitleClick}
+            className="text-5xl font-bold text-center text-white drop-shadow-lg cursor-pointer"
+            title="Click to edit title"
+          >
+            {title}
+          </h1>
+        )}
+      </div>
 
       {/* Stats in Top-Left */}
       <div className="absolute top-8 left-8 text-2xl font-semibold text-white space-y-4 drop-shadow-lg">
@@ -68,6 +112,7 @@ export default function Home() {
         <p>Hunger: {pet.energy}</p>
         <p>Happiness: {pet.happiness}</p>
       </div>
+
       {/* Pet Image */}
       <div className="flex flex-col items-center justify-center flex-grow">
         <Image
@@ -77,8 +122,6 @@ export default function Home() {
           height={384} // Equivalent to h-96
           className="rounded-full shadow-xl drop-shadow-lg"
         />
-
-
 
         {/* Interaction Buttons */}
         <div className="flex justify-center space-x-8 mt-8">
