@@ -3,6 +3,7 @@
 import { useDbData, useDbUpdate } from "./utilities/firebase";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import InteractionButton from "./components/InteractionButton";
 
 export default function Home() {
   const [pet, error] = useDbData("/kempigotchi");
@@ -10,6 +11,7 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false); // To prevent hydration mismatch
   const [editingTitle, setEditingTitle] = useState(false); // Track if title is being edited
   const [title, setTitle] = useState("My Kempigotchi"); // Local state for the title
+  const [animation, setAnimation] = useState("");
 
   // Ensure hydration by using useEffect
   useEffect(() => {
@@ -169,7 +171,7 @@ export default function Home() {
 
 
       {/* Pet Image */}
-      <div className="flex flex-col items-center justify-center flex-grow">
+      <div className="flex flex-col items-center justify-center flex-grow relative">
         <Image
           src="/penguin.png"
           alt="Pet"
@@ -178,26 +180,25 @@ export default function Home() {
           className="rounded-full shadow-xl drop-shadow-lg"
         />
 
-        {/* Interaction Buttons */}
         <div className="flex justify-center space-x-8 mt-8">
-          <button
-            onClick={handleFeed}
-            className="flex items-center justify-center w-32 h-32 text-2xl font-bold text-white bg-blue-500 rounded-full shadow-xl hover:bg-blue-600"
-          >
-            Feed
-          </button>
-          <button
-            onClick={handlePlay}
-            className="flex items-center justify-center w-32 h-32 text-2xl font-bold text-white bg-yellow-500 rounded-full shadow-xl hover:bg-yellow-600"
-          >
-            Play
-          </button>
-          <button
-            onClick={handleClean}
-            className="flex items-center justify-center w-32 h-32 text-2xl font-bold text-white bg-green-500 rounded-full shadow-xl hover:bg-green-600"
-          >
-            Clean
-          </button>
+          <InteractionButton
+            label="Feed"
+            color="blue"
+            emoji="🍎"
+            onClick={() => handleFeed()}
+          />
+          <InteractionButton
+            label="Play"
+            color="yellow"
+            emoji="⚽"
+            onClick={() => handlePlay()}
+          />
+          <InteractionButton
+            label="Clean"
+            color="green"
+            emoji="🧼"
+            onClick={() => handleClean()}
+          />
         </div>
       </div>
     </div>
