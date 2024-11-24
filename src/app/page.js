@@ -107,11 +107,66 @@ export default function Home() {
       </div>
 
       {/* Stats in Top-Left */}
-      <div className="absolute top-8 left-8 text-2xl font-semibold text-white space-y-4 drop-shadow-lg">
-        <p>Health: {pet.health}</p>
-        <p>Hunger: {pet.energy}</p>
-        <p>Happiness: {pet.happiness}</p>
+      <div className="absolute top-8 left-8 text-xl font-semibold text-white space-y-4 drop-shadow-lg">
+        <div className="flex items-center space-x-2">
+          <span>Health:</span>
+          <div className="w-48 bg-gray-200 rounded-full h-4">
+            <div
+              className="bg-green-500 h-4 rounded-full"
+              style={{ width: `${(pet.health / MAX_STAT_VALUE) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span>Energy:</span>
+          <div className="w-48 bg-gray-200 rounded-full h-4">
+            <div
+              className="bg-purple-500 h-4 rounded-full"
+              style={{ width: `${(pet.energy / MAX_STAT_VALUE) * 100}%` }}
+            ></div>
+          </div>
+        </div>
       </div>
+
+      {/* Happiness on right corner */}
+      <div className="absolute top-8 right-8 flex items-center space-x-1">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <span key={index}>
+            {index < Math.round((pet.happiness / MAX_STAT_VALUE) * 5) ? (
+              // Filled Hearts
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-10 h-10 text-red-500"
+              >
+                {/* Heart SVG path create by ChatGPT */}
+                <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                />
+              </svg>
+            ) : (
+              // Empty Hearts
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-10 h-10 text-red-500"
+              >
+                {/* Heart SVG path create by ChatGPT */}
+                <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                />
+              </svg>
+            )}
+          </span>
+        ))}
+      </div>
+
 
       {/* Pet Image */}
       <div className="flex flex-col items-center justify-center flex-grow">
