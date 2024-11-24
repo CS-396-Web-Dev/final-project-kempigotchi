@@ -12,6 +12,14 @@ export default function Home() {
   const [editingTitle, setEditingTitle] = useState(false); // Track if title is being edited
   const [title, setTitle] = useState("My Kempigotchi"); // Local state for the title
   const [animation, setAnimation] = useState("");
+  const [stage, setStage] = useState("egg"); // Initial stage
+
+  const stageImages = {
+    egg: "/egg.png",
+    baby: "/baby_penguin.png",
+    teen: "/teen_penguin.png",
+    adult: "/penguin.png",
+  };
 
   // Ensure hydration by using useEffect
   useEffect(() => {
@@ -53,6 +61,39 @@ export default function Home() {
       return () => clearInterval(interval);
     }
   }, [pet, update]);
+
+  useEffect(() => {
+    const now = Date.now();
+  
+    if (pet?.health > 80 && pet?.energy > 80) {
+      if (!pet?.babyTime || now - pet?.babyTime > 300000) { // 5 minutes
+        setStage("baby");
+        if (!pet?.babyTime) {
+          update({ babyTime: now }); // Save timestamp for baby stage
+        }
+      }
+    } else if (pet?.health > 60 && pet?.energy > 60) {
+      if (!pet?.teenTime || now - pet?.teenTime > 300000) { // 5 minutes
+        setStage("teen");
+        if (!pet?.teenTime) {
+          update({ teenTime: now }); // Save timestamp for teen stage
+        }
+      }
+    } else if (pet?.health > 40 && pet?.energy > 40) {
+      if (!pet?.adultTime || now - pet?.adultTime > 300000) { // 5 minutes
+        setStage("adult");
+        if (!pet?.adultTime) {
+          update({ adultTime: now }); // Save timestamp for adult stage
+        }
+      }
+    } else {
+      if (!pet?.eggTime) {
+        setStage("egg");
+        update({ eggTime: now }); // Save timestamp for egg stage
+      }
+    }
+  }, [pet, update]);
+  
 
   if (!hydrated) return null; // Prevent rendering until hydration
   if (error) return <h1 className="text-red-500">Error: {error.message}</h1>;
