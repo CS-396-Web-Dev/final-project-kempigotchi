@@ -17,9 +17,40 @@ export default function Home() {
   const stageImages = {
     egg: "/egg.png",
     baby: "/baby_penguin.png",
-    teen: "/teen_penguin.png",
     adult: "/penguin.png",
   };
+
+  useEffect(() => {
+    if (!pet?.stage) {
+      setStage("egg"); 
+      update({ stage: "egg", eggTime: Date.now() }); 
+    } else {
+      setStage(pet.stage); // Sync local state with the database
+    }
+  }, [pet, update]);
+
+  useEffect(() => {
+    const now = Date.now();
+
+    const determineStage = () => {
+      if (pet?.stage === "egg" && pet?.health > 60 && pet?.energy > 60) {
+        if (!pet?.babyTime || now - pet?.eggTime > 300000) { // 5 minutes in egg
+          setStage("baby");
+          update({ stage: "baby", babyTime: now });
+        }
+
+      } else if (pet?.stage === "baby" && pet?.health > 80 && pet?.energy >80) {
+        if (!pet?.adultTime || now - pet?.babyTime > 300000) { // 5 minutes in teen
+          setStage("adult");
+          update({ stage: "adult", adultTime: now });
+        }
+      }
+    };
+  
+    const interval = setInterval(determineStage, 1000); // Check every second
+    return () => clearInterval(interval); // Cleanup
+  }, [pet, update]);
+  
 
   // Ensure hydration by using useEffect
   useEffect(() => {
@@ -62,38 +93,14 @@ export default function Home() {
     }
   }, [pet, update]);
 
-  useEffect(() => {
-    const now = Date.now();
-  
-    if (pet?.health > 80 && pet?.energy > 80) {
-      if (!pet?.babyTime || now - pet?.babyTime > 300000) { // 5 minutes
-        setStage("baby");
-        if (!pet?.babyTime) {
-          update({ babyTime: now }); // Save timestamp for baby stage
-        }
-      }
-    } else if (pet?.health > 60 && pet?.energy > 60) {
-      if (!pet?.teenTime || now - pet?.teenTime > 300000) { // 5 minutes
-        setStage("teen");
-        if (!pet?.teenTime) {
-          update({ teenTime: now }); // Save timestamp for teen stage
-        }
-      }
-    } else if (pet?.health > 40 && pet?.energy > 40) {
-      if (!pet?.adultTime || now - pet?.adultTime > 300000) { // 5 minutes
-        setStage("adult");
-        if (!pet?.adultTime) {
-          update({ adultTime: now }); // Save timestamp for adult stage
-        }
-      }
-    } else {
-      if (!pet?.eggTime) {
-        setStage("egg");
-        update({ eggTime: now }); // Save timestamp for egg stage
-      }
-    }
-  }, [pet, update]);
-  
+  <Image
+  src={stageImages[stage]} // Use the stage-specific image
+  alt="Pet"
+  width={384}
+  height={384}
+  className="rounded-full shadow-xl drop-shadow-lg"
+/>;
+
 
   if (!hydrated) return null; // Prevent rendering until hydration
   if (error) return <h1 className="text-red-500">Error: {error.message}</h1>;
@@ -211,15 +218,16 @@ export default function Home() {
       </div>
 
 
-      {/* Pet Image */}
-      <div className="flex flex-col items-center justify-center flex-grow relative">
-        <Image
-          src="/penguin.png"
-          alt="Pet"
-          width={384} // Equivalent to w-96
-          height={384} // Equivalent to h-96
-          className="rounded-full shadow-xl drop-shadow-lg"
-        />
+{/* Pet Image */}
+<div className="flex flex-col items-center justify-center flex-grow relative">
+  <Image
+    src={stageImages[stage]} // Dynamically use the image based on the stage
+    alt={`${stage} image`} // Alt text updates with the stage
+    width={384} // Equivalent to w-96
+    height={384} // Equivalent to h-96
+    className="rounded-full shadow-xl drop-shadow-lg"
+  />
+
 
         <div className="flex justify-center space-x-8 mt-8">
           <InteractionButton
