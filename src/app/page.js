@@ -1,17 +1,21 @@
 "use client";
 
-import { useDbData, useDbUpdate } from "./utilities/firebase";
 import { useEffect, useState } from "react";
+import { useDbData, useDbUpdate, auth, signInWithGoogle, logout } from "./utilities/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import Image from "next/image";
 import InteractionButton from "./components/InteractionButton";
 
 export default function Home() {
-  const [pet, error] = useDbData("/kempigotchi");
-  const [update, result] = useDbUpdate("/kempigotchi");
+  const [user, setUser] = useState(null); // User state
   const [hydrated, setHydrated] = useState(false); // To prevent hydration mismatch
+
+  const [petDataPath, setPetDataPath] = useState(null);
+  const [pet, error] = useDbData(petDataPath);
+  const [update, result] = useDbUpdate(petDataPath);
+
   const [editingTitle, setEditingTitle] = useState(false); // Track if title is being edited
   const [title, setTitle] = useState("My Kempigotchi"); // Local state for the title
-  const [animation, setAnimation] = useState("");
   const [stage, setStage] = useState("egg"); // Initial stage
 
   const stageImages = {
@@ -20,49 +24,40 @@ export default function Home() {
     adult: "/penguin.png",
   };
 
-  useEffect(() => {
-    if (!pet?.stage) {
-      setStage("egg"); 
-      update({ stage: "egg", eggTime: Date.now() }); 
-    } else {
-      setStage(pet.stage); // Sync local state with the database
-    }
-  }, [pet, update]);
-
-  useEffect(() => {
-    const now = Date.now();
-
-    const determineStage = () => {
-      if (pet?.stage === "egg" && pet?.health > 60 && pet?.energy > 60) {
-        if (!pet?.babyTime || now - pet?.eggTime > 300000) { // 5 minutes in egg
-          setStage("baby");
-          update({ stage: "baby", babyTime: now });
-        }
-
-      } else if (pet?.stage === "baby" && pet?.health > 80 && pet?.energy >80) {
-        if (!pet?.adultTime || now - pet?.babyTime > 300000) { // 5 minutes in teen
-          setStage("adult");
-          update({ stage: "adult", adultTime: now });
-        }
-      }
-    };
-  
-    const interval = setInterval(determineStage, 1000); // Check every second
-    return () => clearInterval(interval); // Cleanup
-  }, [pet, update]);
-  
-
-  // Ensure hydration by using useEffect
+  // Listen to auth state changes
   useEffect(() => {
     setHydrated(true);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setPetDataPath(`/users/${currentUser.uid}/petData`);
+      } else {
+        setPetDataPath(null);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Fetch the title from the database if available
+  // Initialize pet data if not present
   useEffect(() => {
-    if (pet?.title) {
-      setTitle(pet.title);
+    if (!user) return;
+    if (pet === undefined) return; // Data is still loading
+    if (pet === null) {
+      // No pet data exists, initialize it
+      update({
+        energy: 100,
+        health: 100,
+        happiness: 100,
+        stage: "egg",
+        title: "My Kempigotchi",
+        lastUpdated: Date.now(),
+        eggTime: Date.now(),
+      });
+    } else {
+      setTitle(pet.title || "My Kempigotchi");
+      setStage(pet.stage || "egg");
     }
-  }, [pet]);
+  }, [pet, user, update]);
 
   // Automatic deduction of stats
   useEffect(() => {
@@ -93,19 +88,52 @@ export default function Home() {
     }
   }, [pet, update]);
 
-  <Image
-  src={stageImages[stage]} // Use the stage-specific image
-  alt="Pet"
-  width={384}
-  height={384}
-  className="rounded-full shadow-xl drop-shadow-lg"
-/>;
+  // Stage progression
+  useEffect(() => {
+    if (!pet) return;
+    const now = Date.now();
 
+    const determineStage = () => {
+      if (pet.stage === "egg" && pet.health > 60 && pet.energy > 60) {
+        if (!pet.babyTime || now - pet.eggTime > 300000) {
+          setStage("baby");
+          update({ stage: "baby", babyTime: now });
+        }
+      } else if (pet.stage === "baby" && pet.health > 80 && pet.energy > 80) {
+        if (!pet.adultTime || now - pet.babyTime > 300000) {
+          setStage("adult");
+          update({ stage: "adult", adultTime: now });
+        }
+      }
+    };
 
-  if (!hydrated) return null; // Prevent rendering until hydration
+    const interval = setInterval(determineStage, 1000); // Check every second
+    return () => clearInterval(interval); // Cleanup
+  }, [pet, update]);
+
+  // Ensure hydration
+  if (!hydrated) return null;
+
+  if (!user) {
+    // User is not signed in
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-200 to-purple-300">
+        <h1 className="text-3xl font-bold mb-6 text-white drop-shadow-lg">
+          Welcome to Kempigotchi!
+        </h1>
+        <button
+          onClick={signInWithGoogle}
+          className="bg-white text-blue-500 px-4 py-2 rounded shadow-md hover:bg-gray-100"
+          aria-label="Sign in with Google"
+        >
+          Sign in with Google
+        </button>
+      </div>
+    );
+  }
+
   if (error) return <h1 className="text-red-500">Error: {error.message}</h1>;
-  if (pet === undefined) return <h1>Loading...</h1>;
-  if (!pet) return <h1>No pet found.</h1>;
+  if (pet === undefined || pet === null) return <h1>Loading...</h1>;
 
   const MAX_STAT_VALUE = 100;
 
@@ -134,6 +162,17 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-blue-200 to-purple-300 font-sans overflow-hidden flex flex-col">
+      {/* Sign Out Button */}
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={logout}
+          className="bg-red-500 text-white px-3 py-1 rounded"
+          aria-label="Sign Out"
+        >
+          Sign Out
+        </button>
+      </div>
+
       {/* Title */}
       <div className="mt-6 w-full text-center">
         {editingTitle ? (
@@ -144,6 +183,7 @@ export default function Home() {
             onBlur={handleTitleSave}
             onKeyDown={handleKeyDown}
             className="text-5xl font-bold text-center text-white bg-transparent border-b-2 border-white focus:outline-none focus:border-blue-500"
+            aria-label="Edit pet title"
           />
         ) : (
           <h1
@@ -192,7 +232,7 @@ export default function Home() {
                 strokeWidth="2"
                 className="w-10 h-10 text-red-500"
               >
-                {/* Heart SVG path create by ChatGPT */}
+                {/* Heart SVG path */}
                 <path
                   d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
                 />
@@ -207,7 +247,7 @@ export default function Home() {
                 strokeWidth="2"
                 className="w-10 h-10 text-red-500"
               >
-                {/* Heart SVG path create by ChatGPT */}
+                {/* Heart SVG path */}
                 <path
                   d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
                 />
@@ -217,36 +257,34 @@ export default function Home() {
         ))}
       </div>
 
-
-{/* Pet Image */}
-<div className="flex flex-col items-center justify-center flex-grow relative">
-  <Image
-    src={stageImages[stage]} // Dynamically use the image based on the stage
-    alt={`${stage} image`} // Alt text updates with the stage
-    width={384} // Equivalent to w-96
-    height={384} // Equivalent to h-96
-    className="rounded-full shadow-xl drop-shadow-lg"
-  />
-
+      {/* Pet Image */}
+      <div className="flex flex-col items-center justify-center flex-grow relative">
+        <Image
+          src={stageImages[stage]} // Dynamically use the image based on the stage
+          alt={`${stage} image`} // Alt text updates with the stage
+          width={384} // Equivalent to w-96
+          height={384} // Equivalent to h-96
+          className="rounded-full shadow-xl drop-shadow-lg"
+        />
 
         <div className="flex justify-center space-x-8 mt-8">
           <InteractionButton
             label="Feed"
             color="blue"
             emoji="🍎"
-            onClick={() => handleFeed()}
+            onClick={handleFeed}
           />
           <InteractionButton
             label="Play"
             color="yellow"
             emoji="⚽"
-            onClick={() => handlePlay()}
+            onClick={handlePlay}
           />
           <InteractionButton
             label="Clean"
             color="green"
             emoji="🧼"
-            onClick={() => handleClean()}
+            onClick={handleClean}
           />
         </div>
       </div>
