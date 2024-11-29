@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDbData, useDbUpdate, auth, signInWithGoogle, logout } from "./utilities/firebase";
+import {
+  useDbData,
+  useDbUpdate,
+  auth,
+  signInWithGoogle,
+  logout,
+} from "./utilities/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Image from "next/image";
 import InteractionButton from "./components/InteractionButton";
@@ -16,7 +22,9 @@ export default function Home() {
 
   const [editingTitle, setEditingTitle] = useState(false); // Track if title is being edited
   const [title, setTitle] = useState("My Kempigotchi"); // Local state for the title
-  const [stage, setStage] = useState("egg"); // Initial stage
+  const [stage, setStage] = useState("egg");
+
+  const MAX_STAT_VALUE = 100;
 
   const stageImages = {
     egg: "/egg.png",
@@ -24,70 +32,6 @@ export default function Home() {
     adult: "/penguin.png",
     dead: "/tombstone.png",
   };
-// Ensure default stage is set when the app initializes
-useEffect(() => {
-  if (!pet?.stage) {
-    setStage("egg"); // Set local state
-    update({ stage: "egg", eggTime: Date.now() }); // Initialize in database
-  } else {
-    setStage(pet.stage); // Sync local state with database stage
-  }
-}, [pet, update]);
-
-// Monitor stage transitions and health
-useEffect(() => {
-  const determineStage = () => {
-    // If the pet is already dead, stop further stage transitions
-    if (stage === "dead") return;
-
-    // Check if the pet's health is 0, and transition to "dead" stage
-    if (pet?.health === 0) {
-      console.log("Health is 0. Switching to 'dead' stage.");
-      setStage("dead");
-      update({ stage: "dead" });
-      return; // Exit early to prevent further logic
-    }
-
-    const now = Date.now();
-
-    // Transition from "egg" to "baby"
-    if (pet?.stage === "egg" && pet?.health > 60 && pet?.energy > 60) {
-      if (!pet?.babyTime || now - pet?.eggTime > 300000) { // 5 minutes
-        setStage("baby");
-        update({ stage: "baby", babyTime: now });
-      }
-    }
-    // Transition from "baby" to "adult"
-    else if (pet?.stage === "baby" && pet?.health > 80 && pet?.energy > 80) {
-      if (!pet?.adultTime || now - pet?.babyTime > 300000) { // 5 minutes
-        setStage("adult");
-        update({ stage: "adult", adultTime: now });
-      }
-    }
-  };
-
-  // Set up an interval to check the stage every second
-  const interval = setInterval(determineStage, 1000);
-
-  // Cleanup the interval on component unmount
-  return () => clearInterval(interval);
-}, [pet, stage, update]);
-
-// Reset pet to "egg" when it's in "dead" stage
-const handleReset = () => {
-  if (stage === "dead") {
-    setStage("egg");
-    update({
-      stage: "egg",
-      eggTime: Date.now(),
-      health: 100, // Reset health
-      energy: 100, // Reset energy
-      happiness: 100, // Reset happiness
-    });
-  }
-};
-
-  
 
   // Ensure hydration by using useEffect
   useEffect(() => {
@@ -124,21 +68,114 @@ const handleReset = () => {
     }
   }, [pet, user, update]);
 
+  // Ensure default stage is set when the app initializes
+  useEffect(() => {
+    if (!pet?.stage) {
+      setStage("egg"); // Set local state
+      update({ stage: "egg", eggTime: Date.now() }); // Initialize in database
+    } else {
+      setStage(pet.stage); // Sync local state with database stage
+    }
+  }, [pet, update]);
+
+  // Monitor stage transitions and health (Teammate's logic)
+  useEffect(() => {
+    if (!pet) return;
+    const determineStage = () => {
+      // If the pet is already dead, stop further stage transitions
+      if (stage === "dead") return;
+
+      // Check if the pet's health is 0, and transition to "dead" stage
+      if (pet?.health === 0) {
+        console.log("Health is 0. Switching to 'dead' stage.");
+        setStage("dead");
+        update({ stage: "dead" });
+        return; // Exit early to prevent further logic
+      }
+
+      const now = Date.now();
+
+      // Transition from "egg" to "baby"
+      if (
+        pet?.stage === "egg" &&
+        pet?.health > 60 &&
+        pet?.energy > 60 &&
+        pet?.eggTime
+      ) {
+        if (!pet?.babyTime || now - pet?.eggTime > 300000) {
+          // 5 minutes
+          setStage("baby");
+          update({ stage: "baby", babyTime: now });
+        }
+      }
+      // Transition from "baby" to "adult"
+      else if (
+        pet?.stage === "baby" &&
+        pet?.health > 80 &&
+        pet?.energy > 80 &&
+        pet?.babyTime
+      ) {
+        if (!pet?.adultTime || now - pet?.babyTime > 300000) {
+          // 5 minutes
+          setStage("adult");
+          update({ stage: "adult", adultTime: now });
+        }
+      }
+    };
+
+    // Set up an interval to check the stage every second
+    const interval = setInterval(determineStage, 1000);
+
+    // Cleanup the interval on component unmount
+    return () => clearInterval(interval);
+  }, [pet, stage, update]);
+
+  // Reset pet to "egg" when it's in "dead" stage or stats are invalid
+  const handleReset = () => {
+    if (
+      stage === "dead" ||
+      isNaN(pet.health) ||
+      isNaN(pet.energy) ||
+      isNaN(pet.happiness)
+    ) {
+      setStage("egg");
+      update({
+        stage: "egg",
+        eggTime: Date.now(),
+        health: 100, // Reset health
+        energy: 100, // Reset energy
+        happiness: 100, // Reset happiness
+        lastUpdated: Date.now(),
+      });
+    }
+  };
+
+  // Fetch the title from the database if available (Teammate's logic)
+  useEffect(() => {
+    if (pet?.title) {
+      setTitle(pet.title);
+    }
+  }, [pet]);
+
   // Automatic deduction of stats
   useEffect(() => {
     if (pet && pet.lastUpdated) {
       const interval = setInterval(() => {
         const now = Date.now();
-        const lastUpdated = new Date(pet.lastUpdated).getTime();
+        const lastUpdated = pet.lastUpdated; // It's a timestamp already
         const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
 
         const decreaseRate = 5; // Decrease every 5 seconds
         const decreaseAmount = Math.floor(elapsedSeconds / decreaseRate);
 
         if (decreaseAmount > 0) {
-          const newHealth = Math.max(0, pet.health - decreaseAmount);
-          const newEnergy = Math.max(0, pet.energy - decreaseAmount);
-          const newHappiness = Math.max(0, pet.happiness - decreaseAmount);
+          const currentHealth = Number(pet.health) || 0;
+          const currentEnergy = Number(pet.energy) || 0;
+          const currentHappiness = Number(pet.happiness) || 0;
+
+          const newHealth = Math.max(0, currentHealth - decreaseAmount);
+          const newEnergy = Math.max(0, currentEnergy - decreaseAmount);
+          const newHappiness = Math.max(0, currentHappiness - decreaseAmount);
 
           update({
             health: newHealth,
@@ -151,30 +188,7 @@ const handleReset = () => {
 
       return () => clearInterval(interval);
     }
-  }, [pet, update]);
-
-  // Stage progression
-  useEffect(() => {
-    if (!pet) return;
-    const now = Date.now();
-
-    const determineStage = () => {
-      if (pet.stage === "egg" && pet.health > 60 && pet.energy > 60) {
-        if (!pet.babyTime || now - pet.eggTime > 300000) {
-          setStage("baby");
-          update({ stage: "baby", babyTime: now });
-        }
-      } else if (pet.stage === "baby" && pet.health > 80 && pet.energy > 80) {
-        if (!pet.adultTime || now - pet.babyTime > 300000) {
-          setStage("adult");
-          update({ stage: "adult", adultTime: now });
-        }
-      }
-    };
-
-    const interval = setInterval(determineStage, 1000); // Check every second
-    return () => clearInterval(interval); // Cleanup
-  }, [pet, update]);
+  }, [pet, update, pet?.lastUpdated]);
 
   // Ensure hydration
   if (!hydrated) return null;
@@ -200,23 +214,32 @@ const handleReset = () => {
   if (error) return <h1 className="text-red-500">Error: {error.message}</h1>;
   if (pet === undefined || pet === null) return <h1>Loading...</h1>;
 
-  const MAX_STAT_VALUE = 100;
-
   const handleFeed = () => {
-    handleReset(); // Reset if dead
-    update({ energy: Math.min(MAX_STAT_VALUE, pet.energy + 10) });
+    handleReset(); // Reset if dead or stats invalid
+
+    const currentEnergy = Number(pet.energy) || 0;
+    const newEnergy = Math.min(MAX_STAT_VALUE, currentEnergy + 10);
+
+    update({ energy: newEnergy, lastUpdated: Date.now() });
   };
-  
+
   const handlePlay = () => {
-    handleReset(); // Reset if dead
-    update({ happiness: Math.min(MAX_STAT_VALUE, pet.happiness + 10) });
+    handleReset(); // Reset if dead or stats invalid
+
+    const currentHappiness = Number(pet.happiness) || 0;
+    const newHappiness = Math.min(MAX_STAT_VALUE, currentHappiness + 10);
+
+    update({ happiness: newHappiness, lastUpdated: Date.now() });
   };
-  
+
   const handleClean = () => {
-    handleReset(); // Reset if dead
-    update({ health: Math.min(MAX_STAT_VALUE, pet.health + 10) });
+    handleReset(); // Reset if dead or stats invalid
+
+    const currentHealth = Number(pet.health) || 0;
+    const newHealth = Math.min(MAX_STAT_VALUE, currentHealth + 10);
+
+    update({ health: newHealth, lastUpdated: Date.now() });
   };
-  
 
   const handleTitleClick = () => {
     setEditingTitle(true);
@@ -280,7 +303,9 @@ const handleReset = () => {
           <div className="w-48 bg-gray-200 rounded-full h-4">
             <div
               className="bg-green-500 h-4 rounded-full"
-              style={{ width: `${(pet.health / MAX_STAT_VALUE) * 100}%` }}
+              style={{
+                width: `${(Number(pet.health) / MAX_STAT_VALUE) * 100}%`,
+              }}
             ></div>
           </div>
         </div>
@@ -289,17 +314,20 @@ const handleReset = () => {
           <div className="w-48 bg-gray-200 rounded-full h-4">
             <div
               className="bg-purple-500 h-4 rounded-full"
-              style={{ width: `${(pet.energy / MAX_STAT_VALUE) * 100}%` }}
+              style={{
+                width: `${(Number(pet.energy) / MAX_STAT_VALUE) * 100}%`,
+              }}
             ></div>
           </div>
         </div>
       </div>
 
       {/* Happiness on right corner */}
-      <div className="absolute top-8 right-8 flex items-center space-x-1">
+      <div className="absolute top-16 right-8 flex items-center space-x-1">
         {Array.from({ length: 5 }).map((_, index) => (
           <span key={index}>
-            {index < Math.round((pet.happiness / MAX_STAT_VALUE) * 5) ? (
+            {index <
+            Math.round((Number(pet.happiness) / MAX_STAT_VALUE) * 5) ? (
               // Filled Hearts
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -309,10 +337,7 @@ const handleReset = () => {
                 strokeWidth="2"
                 className="w-10 h-10 text-red-500"
               >
-                {/* Heart SVG path */}
-                <path
-                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                />
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
             ) : (
               // Empty Hearts
@@ -324,10 +349,7 @@ const handleReset = () => {
                 strokeWidth="2"
                 className="w-10 h-10 text-red-500"
               >
-                {/* Heart SVG path */}
-                <path
-                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                />
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
             )}
           </span>
