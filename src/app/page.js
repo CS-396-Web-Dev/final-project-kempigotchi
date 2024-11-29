@@ -22,9 +22,74 @@ export default function Home() {
     egg: "/egg.png",
     baby: "/baby_penguin.png",
     adult: "/penguin.png",
+    dead: "/tombstone.png",
+  };
+// Ensure default stage is set when the app initializes
+useEffect(() => {
+  if (!pet?.stage) {
+    setStage("egg"); // Set local state
+    update({ stage: "egg", eggTime: Date.now() }); // Initialize in database
+  } else {
+    setStage(pet.stage); // Sync local state with database stage
+  }
+}, [pet, update]);
+
+// Monitor stage transitions and health
+useEffect(() => {
+  const determineStage = () => {
+    // If the pet is already dead, stop further stage transitions
+    if (stage === "dead") return;
+
+    // Check if the pet's health is 0, and transition to "dead" stage
+    if (pet?.health === 0) {
+      console.log("Health is 0. Switching to 'dead' stage.");
+      setStage("dead");
+      update({ stage: "dead" });
+      return; // Exit early to prevent further logic
+    }
+
+    const now = Date.now();
+
+    // Transition from "egg" to "baby"
+    if (pet?.stage === "egg" && pet?.health > 60 && pet?.energy > 60) {
+      if (!pet?.babyTime || now - pet?.eggTime > 300000) { // 5 minutes
+        setStage("baby");
+        update({ stage: "baby", babyTime: now });
+      }
+    }
+    // Transition from "baby" to "adult"
+    else if (pet?.stage === "baby" && pet?.health > 80 && pet?.energy > 80) {
+      if (!pet?.adultTime || now - pet?.babyTime > 300000) { // 5 minutes
+        setStage("adult");
+        update({ stage: "adult", adultTime: now });
+      }
+    }
   };
 
-  // Listen to auth state changes
+  // Set up an interval to check the stage every second
+  const interval = setInterval(determineStage, 1000);
+
+  // Cleanup the interval on component unmount
+  return () => clearInterval(interval);
+}, [pet, stage, update]);
+
+// Reset pet to "egg" when it's in "dead" stage
+const handleReset = () => {
+  if (stage === "dead") {
+    setStage("egg");
+    update({
+      stage: "egg",
+      eggTime: Date.now(),
+      health: 100, // Reset health
+      energy: 100, // Reset energy
+      happiness: 100, // Reset happiness
+    });
+  }
+};
+
+  
+
+  // Ensure hydration by using useEffect
   useEffect(() => {
     setHydrated(true);
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -137,9 +202,21 @@ export default function Home() {
 
   const MAX_STAT_VALUE = 100;
 
-  const handleFeed = () => update({ energy: Math.min(MAX_STAT_VALUE, pet.energy + 10) });
-  const handlePlay = () => update({ happiness: Math.min(MAX_STAT_VALUE, pet.happiness + 10) });
-  const handleClean = () => update({ health: Math.min(MAX_STAT_VALUE, pet.health + 10) });
+  const handleFeed = () => {
+    handleReset(); // Reset if dead
+    update({ energy: Math.min(MAX_STAT_VALUE, pet.energy + 10) });
+  };
+  
+  const handlePlay = () => {
+    handleReset(); // Reset if dead
+    update({ happiness: Math.min(MAX_STAT_VALUE, pet.happiness + 10) });
+  };
+  
+  const handleClean = () => {
+    handleReset(); // Reset if dead
+    update({ health: Math.min(MAX_STAT_VALUE, pet.health + 10) });
+  };
+  
 
   const handleTitleClick = () => {
     setEditingTitle(true);
