@@ -23,8 +23,11 @@ export default function Home() {
   const [editingTitle, setEditingTitle] = useState(false); // Track if title is being edited
   const [title, setTitle] = useState("My Kempigotchi"); // Local state for the title
   const [stage, setStage] = useState("egg");
+  const [showAlert, setShowAlert] = useState(false); //On-screen Alert
 
   const MAX_STAT_VALUE = 100;
+  const MAX_ACTIONS = 5; // Maximum number of actions allowed
+  const ACTION_REFRESH_INTERVAL = 10 * 60 * 1000; 
 
   const stageImages = {
     egg: "/egg.png",
@@ -157,6 +160,16 @@ export default function Home() {
     }
   }, [pet]);
 
+  // Updates Actions Remaining
+  useEffect(() => {
+    if (pet && pet.actions === undefined) {
+      update({
+        actions: MAX_ACTIONS,
+        lastActionRefresh: Date.now(),
+      });
+    }
+  }, [pet, update]);
+  
   // Automatic deduction of stats
   useEffect(() => {
     if (pet && pet.lastUpdated) {
@@ -165,7 +178,7 @@ export default function Home() {
         const lastUpdated = pet.lastUpdated; // It's a timestamp already
         const elapsedSeconds = Math.floor((now - lastUpdated) / 1000);
 
-        const decreaseRate = 5; // Decrease every 5 seconds
+        const decreaseRate = 60; // Decrease every 60 seconds
         const decreaseAmount = Math.floor(elapsedSeconds / decreaseRate);
 
         if (decreaseAmount > 0) {
@@ -215,30 +228,36 @@ export default function Home() {
   if (pet === undefined || pet === null) return <h1>Loading...</h1>;
 
   const handleFeed = () => {
-    handleReset(); // Reset if dead or stats invalid
-
-    const currentEnergy = Number(pet.energy) || 0;
-    const newEnergy = Math.min(MAX_STAT_VALUE, currentEnergy + 10);
-
-    update({ energy: newEnergy, lastUpdated: Date.now() });
+    performAction(() => {
+      handleReset(); // Reset if dead or stats invalid
+  
+      const currentEnergy = Number(pet.energy) || 0;
+      const newEnergy = Math.min(MAX_STAT_VALUE, currentEnergy + 10);
+  
+      update({ energy: newEnergy, lastUpdated: Date.now() });
+    });
   };
-
+  
   const handlePlay = () => {
-    handleReset(); // Reset if dead or stats invalid
-
-    const currentHappiness = Number(pet.happiness) || 0;
-    const newHappiness = Math.min(MAX_STAT_VALUE, currentHappiness + 10);
-
-    update({ happiness: newHappiness, lastUpdated: Date.now() });
+    performAction(() => {
+      handleReset(); // Reset if dead or stats invalid
+  
+      const currentHappiness = Number(pet.happiness) || 0;
+      const newHappiness = Math.min(MAX_STAT_VALUE, currentHappiness + 10);
+  
+      update({ happiness: newHappiness, lastUpdated: Date.now() });
+    });
   };
-
+  
   const handleClean = () => {
-    handleReset(); // Reset if dead or stats invalid
-
-    const currentHealth = Number(pet.health) || 0;
-    const newHealth = Math.min(MAX_STAT_VALUE, currentHealth + 10);
-
-    update({ health: newHealth, lastUpdated: Date.now() });
+    performAction(() => {
+      handleReset(); // Reset if dead or stats invalid
+  
+      const currentHealth = Number(pet.health) || 0;
+      const newHealth = Math.min(MAX_STAT_VALUE, currentHealth + 10);
+  
+      update({ health: newHealth, lastUpdated: Date.now() });
+    });
   };
 
   const handleTitleClick = () => {
@@ -259,6 +278,53 @@ export default function Home() {
       handleTitleSave();
     }
   };
+
+  const canPerformAction = () => {
+    if (!pet?.actions || !pet?.lastActionRefresh) return false;
+  
+    const now = Date.now();
+    const elapsedTime = now - pet.lastActionRefresh;
+  
+    // Calculate actions to restore based on elapsed time
+    const actionsToRestore = Math.floor(elapsedTime / ACTION_REFRESH_INTERVAL);
+    const newActionCount = Math.min(MAX_ACTIONS, (pet.actions || 0) + actionsToRestore);
+  
+    if (actionsToRestore > 0) {
+      // Update Firebase with refreshed actions
+      update({
+        actions: newActionCount,
+        lastActionRefresh: now,
+      });
+    }
+  
+    // Check if at least one action is available
+    return newActionCount > 0;
+  };
+
+  const performAction = (actionCallback) => {
+    if (!canPerformAction()) {
+      triggerAlert(); // Show alert if no actions available
+      return;
+    }
+  
+    // Deduct an action and perform the callback
+    update({
+      actions: pet.actions - 1,
+      lastActionRefresh: pet.lastActionRefresh || Date.now(),
+    });
+  
+    actionCallback();
+  };
+  
+  
+  // Alert for no actions left
+  const triggerAlert = () => {
+    setShowAlert(true);
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 3000); // Alert disappears after 3 seconds
+  };
+  
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-blue-200 to-purple-300 font-sans overflow-hidden flex flex-col">
@@ -318,6 +384,16 @@ export default function Home() {
                 width: `${(Number(pet.energy) / MAX_STAT_VALUE) * 100}%`,
               }}
             ></div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span>Actions Remaining:</span>
+          <div
+            className={`w-20 bg-gray-200 rounded-full h-6 flex items-center justify-center ${
+              pet?.actions > 0 ? "bg-green-500" : "bg-red-500"
+            }`}
+          >
+            {pet?.actions || 0}
           </div>
         </div>
       </div>
@@ -387,6 +463,14 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* Alert No Actions Left*/}
+      {showAlert && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white text-lg font-semibold py-2 px-4 rounded shadow-lg z-50">
+          No actions remaining! Wait for actions to refresh.
+        </div>
+      )}
+
     </div>
   );
 }

@@ -4,6 +4,12 @@ Patrick Jiang - psj9013 <br>
 Ellie Li - cib1354 <br>
 Melany Torres - mat3418  <br>
 
+### Default Game Setting
+Time to gain one action: 10 minutes
+Max actions stored: 5 actions
+Health, happines, and energy decrease rate: 1 every 60 seconds
+
+### Original
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
