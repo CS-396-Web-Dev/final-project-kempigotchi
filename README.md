@@ -6,7 +6,9 @@ Melany Torres - mat3418  <br>
 
 ### Default Game Setting
 Time to gain one action: 10 minutes
+
 Max actions stored: 5 actions
+
 Health, happines, and energy decrease rate: 1 every 60 seconds
 
 ### Original
