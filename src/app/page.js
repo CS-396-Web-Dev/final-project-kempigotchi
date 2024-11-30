@@ -173,6 +173,33 @@ export default function Home() {
     }
   }, [pet, update]);
 
+  const restoreActions = () => {
+    if (pet?.lastActionRefresh === undefined) {
+      console.log("lastActionRefresh undefined");
+      return;
+    }
+  
+    const now = Date.now();
+    const elapsedTime = now - pet.lastActionRefresh;
+    const actionsToRestore = Math.floor(elapsedTime / ACTION_REFRESH_INTERVAL);
+  
+    console.log("Elapsed time:", elapsedTime);
+    console.log("Actions to restore:", actionsToRestore);
+  
+    if (actionsToRestore > 0) {
+      const newActionCount = Math.min(
+        MAX_ACTIONS,
+        (pet.actions || 0) + actionsToRestore
+      );
+  
+      console.log("Updating actions...");
+      update({
+        actions: newActionCount,
+        lastActionRefresh: now,
+      });
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       console.log("Periodic action restoration check...");
@@ -319,33 +346,6 @@ export default function Home() {
     actionCallback();
   };
 
-  const restoreActions = () => {
-    if (pet?.lastActionRefresh === undefined) {
-      console.log("lastActionRefresh undefined");
-      return;
-    }
-  
-    const now = Date.now();
-    const elapsedTime = now - pet.lastActionRefresh;
-    const actionsToRestore = Math.floor(elapsedTime / ACTION_REFRESH_INTERVAL);
-  
-    console.log("Elapsed time:", elapsedTime);
-    console.log("Actions to restore:", actionsToRestore);
-  
-    if (actionsToRestore > 0) {
-      const newActionCount = Math.min(
-        MAX_ACTIONS,
-        (pet.actions || 0) + actionsToRestore
-      );
-  
-      console.log("Updating actions...");
-      update({
-        actions: newActionCount,
-        lastActionRefresh: now,
-      });
-    }
-  };
-  
   
   // Alert for no actions left
   const triggerAlert = () => {
