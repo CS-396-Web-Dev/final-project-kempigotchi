@@ -348,7 +348,6 @@ export default function Home() {
       <StatHearts happiness={pet.happiness} maxStatValue={MAX_STAT_VALUE} />
 
       <div className="flex flex-col items-center justify-center flex-grow relative px-4">
-        {/* Pet Image */}
         <PetImage stage={stage} />
 
         <div className="flex justify-center space-x-4 md:space-x-8 mt-4 md:mt-8">
