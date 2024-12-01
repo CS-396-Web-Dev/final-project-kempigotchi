@@ -12,6 +12,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import Image from "next/image";
 import InteractionButton from "./components/InteractionButton";
 import SignInPage from "./components/SignInPage";
+import SignOutButton from "./components/SignOutButton";
 
 export default function Home() {
   const [user, setUser] = useState(null); // User state
@@ -347,15 +348,7 @@ export default function Home() {
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-blue-200 to-purple-300 font-sans overflow-hidden flex flex-col">
       {/* Sign Out Button */}
-      <div className="absolute top-4 right-4">
-        <button
-          onClick={logout}
-          className="bg-red-500 text-white px-3 py-1 rounded text-sm md:text-base lg:text-lg"
-          aria-label="Sign Out"
-        >
-          Sign Out
-        </button>
-      </div>
+      <SignOutButton />
 
       {/* Title */}
       <div className="mt-6 w-full text-center px-4">
