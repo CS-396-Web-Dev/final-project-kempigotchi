@@ -15,6 +15,7 @@ import SignInPage from "./components/SignInPage";
 import SignOutButton from "./components/SignOutButton";
 import EditableTitle from "./components/EditableTitle";
 import StatBar from "./components/StatBar";
+import StatActionCounter from "./components/StatActionCounter";
 
 export default function Home() {
   const [user, setUser] = useState(null); // User state
@@ -352,16 +353,7 @@ export default function Home() {
           maxStatValue={MAX_STAT_VALUE}
           statColor={"purple"}
         />
-        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-2">
-          <span>Actions Remaining:</span>
-          <div
-            className={`w-20 bg-gray-200 rounded-full h-6 flex items-center justify-center ${
-              pet?.actions > 0 ? "bg-green-500" : "bg-red-500"
-            }`}
-          >
-            {pet?.actions || 0}
-          </div>
-        </div>
+        <StatActionCounter actions={pet.actions} />
       </div>
 
       {/* Happiness on right corner */}
