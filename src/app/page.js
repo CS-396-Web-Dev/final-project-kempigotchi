@@ -410,22 +410,22 @@ export default function Home() {
 
         <div className="flex justify-center space-x-4 md:space-x-8 mt-4 md:mt-8">
           <InteractionButton
+            label="Clean"
+            color="green"
+            emoji="🧼"
+            onClick={handleClean}
+          />
+          <InteractionButton
             label="Feed"
-            color="blue"
+            color="purple"
             emoji="🍎"
             onClick={handleFeed}
           />
           <InteractionButton
             label="Play"
-            color="yellow"
+            color="red"
             emoji="⚽"
             onClick={handlePlay}
-          />
-          <InteractionButton
-            label="Clean"
-            color="green"
-            emoji="🧼"
-            onClick={handleClean}
           />
         </div>
       </div>
