@@ -14,6 +14,7 @@ import InteractionButton from "./components/InteractionButton";
 import SignInPage from "./components/SignInPage";
 import SignOutButton from "./components/SignOutButton";
 import EditableTitle from "./components/EditableTitle";
+import StatBar from "./components/StatBar";
 
 export default function Home() {
   const [user, setUser] = useState(null); // User state
@@ -30,7 +31,7 @@ export default function Home() {
 
   const MAX_STAT_VALUE = 100;
   const MAX_ACTIONS = 5; // Maximum number of actions allowed
-  const ACTION_REFRESH_INTERVAL = 10 * 60 * 1000; 
+  const ACTION_REFRESH_INTERVAL = 10 * 60 * 1000;
 
   const stageImages = {
     egg: "/egg.png",
@@ -181,20 +182,20 @@ export default function Home() {
       console.log("lastActionRefresh undefined");
       return;
     }
-  
+
     const now = Date.now();
     const elapsedTime = now - pet.lastActionRefresh;
     const actionsToRestore = Math.floor(elapsedTime / ACTION_REFRESH_INTERVAL);
-  
+
     console.log("Elapsed time:", elapsedTime);
     console.log("Actions to restore:", actionsToRestore);
-  
+
     if (actionsToRestore > 0) {
       const newActionCount = Math.min(
         MAX_ACTIONS,
         (pet.actions || 0) + actionsToRestore
       );
-  
+
       console.log("Updating actions...");
       update({
         actions: newActionCount,
@@ -207,12 +208,11 @@ export default function Home() {
     const interval = setInterval(() => {
       console.log("Periodic action restoration check...");
       restoreActions();
-    }, 10000); 
-  
+    }, 10000);
+
     return () => clearInterval(interval); // Clean up the interval on component unmount
   }, [pet]);
-  
-  
+
   // Automatic deduction of stats
   useEffect(() => {
     if (pet && pet.lastUpdated) {
@@ -251,7 +251,7 @@ export default function Home() {
 
   if (!user) {
     // User is not signed in
-    return <SignInPage />
+    return <SignInPage />;
   }
 
   if (error) return <h1 className="text-red-500">Error: {error.message}</h1>;
@@ -260,54 +260,35 @@ export default function Home() {
   const handleFeed = () => {
     performAction(() => {
       handleReset(); // Reset if dead or stats invalid
-  
+
       const currentEnergy = Number(pet.energy) || 0;
       const newEnergy = Math.min(MAX_STAT_VALUE, currentEnergy + 10);
-  
+
       update({ energy: newEnergy, lastUpdated: Date.now() });
     });
   };
-  
+
   const handlePlay = () => {
     performAction(() => {
       handleReset(); // Reset if dead or stats invalid
-  
+
       const currentHappiness = Number(pet.happiness) || 0;
       const newHappiness = Math.min(MAX_STAT_VALUE, currentHappiness + 10);
-  
+
       update({ happiness: newHappiness, lastUpdated: Date.now() });
     });
   };
-  
+
   const handleClean = () => {
     performAction(() => {
       handleReset(); // Reset if dead or stats invalid
-  
+
       const currentHealth = Number(pet.health) || 0;
       const newHealth = Math.min(MAX_STAT_VALUE, currentHealth + 10);
-  
+
       update({ health: newHealth, lastUpdated: Date.now() });
     });
   };
-
-  // const handleTitleClick = () => {
-  //   setEditingTitle(true);
-  // };
-
-  // const handleTitleChange = (e) => {
-  //   setTitle(e.target.value);
-  // };
-
-  // const handleTitleSave = () => {
-  //   setEditingTitle(false);
-  //   update({ title }); // Save the title to Firebase
-  // };
-
-  // const handleKeyDown = (e) => {
-  //   if (e.key === "Enter") {
-  //     handleTitleSave();
-  //   }
-  // };
 
   const canPerformAction = () => {
     // Check if the user has actions available
@@ -315,28 +296,26 @@ export default function Home() {
       console.log("No actions available");
       return false;
     }
-  
+
     console.log("Actions available:", pet.actions);
     return true;
   };
-  
 
   const performAction = (actionCallback) => {
     if (!canPerformAction()) {
       triggerAlert(); // Show alert if no actions available
       return;
     }
-  
+
     // Deduct an action and perform the callback
     update({
       actions: pet.actions - 1,
       lastActionRefresh: pet.lastActionRefresh || Date.now(),
     });
-  
+
     actionCallback();
   };
 
-  
   // Alert for no actions left
   const triggerAlert = () => {
     setShowAlert(true);
@@ -344,7 +323,6 @@ export default function Home() {
       setShowAlert(false);
     }, 3000); // Alert disappears after 3 seconds
   };
-  
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-blue-200 to-purple-300 font-sans overflow-hidden flex flex-col">
@@ -352,7 +330,7 @@ export default function Home() {
       <SignOutButton />
 
       {/* Title */}
-      <EditableTitle 
+      <EditableTitle
         title={title}
         setTitle={setTitle}
         editingTitle={editingTitle}
@@ -362,28 +340,18 @@ export default function Home() {
 
       {/* Stats in Top-Left */}
       <div className="absolute top-8 left-8 text-sm md:text-base lg:text-xl font-semibold text-white space-y-4 drop-shadow-lg">
-        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-2">
-          <span>Health:</span>
-          <div className="w-full max-w-xs md:max-w-md bg-gray-200 rounded-full h-4">
-            <div
-              className="bg-green-500 h-4 rounded-full"
-              style={{
-                width: `${(Number(pet.health) / MAX_STAT_VALUE) * 100}%`,
-              }}
-            ></div>
-          </div>
-        </div>
-        <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-2">
-          <span>Energy:</span>
-          <div className="w-full max-w-xs md:max-w-md bg-gray-200 rounded-full h-4">
-            <div
-              className="bg-purple-500 h-4 rounded-full"
-              style={{
-                width: `${(Number(pet.energy) / MAX_STAT_VALUE) * 100}%`,
-              }}
-            ></div>
-          </div>
-        </div>
+        <StatBar
+          statName={"Health"}
+          statValue={pet.health}
+          maxStatValue={MAX_STAT_VALUE}
+          statColor={"green"}
+        />
+        <StatBar
+          statName={"Energy"}
+          statValue={pet.energy}
+          maxStatValue={MAX_STAT_VALUE}
+          statColor={"purple"}
+        />
         <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-2">
           <span>Actions Remaining:</span>
           <div
@@ -468,7 +436,6 @@ export default function Home() {
           No actions remaining! Wait for actions to refresh.
         </div>
       )}
-
     </div>
   );
 }
