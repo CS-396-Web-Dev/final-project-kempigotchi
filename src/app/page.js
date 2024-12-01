@@ -1,15 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  useDbData,
-  useDbUpdate,
-  auth,
-  signInWithGoogle,
-  logout,
-} from "./utilities/firebase";
+import { useDbData, useDbUpdate, auth } from "./utilities/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import Image from "next/image";
 import InteractionButton from "./components/InteractionButton";
 import SignInPage from "./components/SignInPage";
 import SignOutButton from "./components/SignOutButton";
@@ -17,6 +10,7 @@ import EditableTitle from "./components/EditableTitle";
 import StatBar from "./components/StatBar";
 import StatActionCounter from "./components/StatActionCounter";
 import StatHearts from "./components/StatHearts";
+import PetImage from "./components/PetImage";
 
 export default function Home() {
   const [user, setUser] = useState(null); // User state
@@ -34,13 +28,6 @@ export default function Home() {
   const MAX_STAT_VALUE = 100;
   const MAX_ACTIONS = 5; // Maximum number of actions allowed
   const ACTION_REFRESH_INTERVAL = 10 * 60 * 1000;
-
-  const stageImages = {
-    egg: "/egg.png",
-    baby: "/baby_penguin.png",
-    adult: "/penguin.png",
-    dead: "/tombstone.png",
-  };
 
   // Ensure hydration by using useEffect
   useEffect(() => {
@@ -360,15 +347,9 @@ export default function Home() {
       {/* Happiness on right corner */}
       <StatHearts happiness={pet.happiness} maxStatValue={MAX_STAT_VALUE} />
 
-      {/* Pet Image */}
       <div className="flex flex-col items-center justify-center flex-grow relative px-4">
-        <Image
-          src={stageImages[stage]} // Dynamically use the image based on the stage
-          alt={`${stage} image`} // Alt text updates with the stage
-          width={200} // Default width for small screens
-          height={200} // Default height for small screens
-          className="rounded-full shadow-xl drop-shadow-lg md:w-64 md:h-64 lg:w-96 lg:h-96"
-        />
+        {/* Pet Image */}
+        <PetImage stage={stage} />
 
         <div className="flex justify-center space-x-4 md:space-x-8 mt-4 md:mt-8">
           <InteractionButton
