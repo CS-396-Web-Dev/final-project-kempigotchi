@@ -66,13 +66,13 @@ export default function Home() {
     }
   }, [pet, user, update]);
 
-  // Ensure default stage is set when the app initializes
+  // Default stage when app initializes
   useEffect(() => {
     if (!pet?.stage) {
-      setStage("egg"); // Set local state
-      update({ stage: "egg", eggTime: Date.now() }); // Initialize in database
+      setStage("egg"); // local state
+      update({ stage: "egg", eggTime: Date.now() }); 
     } else {
-      setStage(pet.stage); // Sync local state with database stage
+      setStage(pet.stage); 
     }
   }, [pet, update]);
 
@@ -80,15 +80,15 @@ export default function Home() {
   useEffect(() => {
     if (!pet) return;
     const determineStage = () => {
-      // If the pet is already dead, stop further stage transitions
+      // If the pet is already dead, stop stage transitions
       if (stage === "dead") return;
 
-      // Check if the pet's health is 0, and transition to "dead" stage
+      // If the pet's health is 0 = "dead" stage
       if (pet?.health === 0) {
         console.log("Health is 0. Switching to 'dead' stage.");
         setStage("dead");
         update({ stage: "dead" });
-        return; // Exit early to prevent further logic
+        return; 
       }
 
       const now = Date.now();
@@ -124,11 +124,11 @@ export default function Home() {
     // Set up an interval to check the stage every second
     const interval = setInterval(determineStage, 1000);
 
-    // Cleanup the interval on component unmount
+    // Cleanup the interval
     return () => clearInterval(interval);
   }, [pet, stage, update]);
 
-  // Reset pet to "egg" when it's in "dead" stage or stats are invalid
+  // Reset pet to "egg" when it's in "dead" stage 
   const handleReset = () => {
     if (
       stage === "dead" ||
